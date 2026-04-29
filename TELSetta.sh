@@ -51,9 +51,9 @@ if [ "$linker_variant" = "" ]; then
                 ]
                 | min_by(.eoi)
                 ' "$file")
-            min_e=$(echo "$result" | jq '.eoi')
-            min_ab=$(echo "$result" | jq '.aboi')
-            min_d=$(echo "$result" | jq '.doi')
+            min_e=$(echo "$result" | jq -r '.eoi')
+            min_ab=$(echo "$result" | jq -r '.aboi')
+            min_d=$(echo "$result" | jq -r '.doi')
             mcmd=(
                 python ~/TELSetta/start_TELSetta.py \
                 -t "$TELSAM_version" \
@@ -67,7 +67,7 @@ if [ "$linker_variant" = "" ]; then
             fasta="$HOME/TELSetta/${linker_variant}/${TELSAM_version}--${client}_${linker_variant}_${min_ab}_${min_d}.fasta"
             fastout="$HOME/TELSetta/${TELSAM_version}--${client}_${linker_variant}_${min_ab}_${min_d}_gene.txt"
             echo "fasta:$fasta fastout:$fastout"
-            GeneDesigner2.exe $fasta $fastout "None"
+            GeneDesigner2.exe "$fasta" "$fastout" "None"
         ) &
 
     done

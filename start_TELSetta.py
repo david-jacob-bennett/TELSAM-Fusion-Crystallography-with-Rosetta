@@ -584,7 +584,7 @@ class TELSetta:
 		score = self.sf(symm_pose)
 		print(f'Score of {current_deg_pdb}: {score}')
 		with open (f'{current_deg_pdb.removesuffix('.pdb')}.fasta', 'w') as f:
-			f.write(">"+current_deg_pdb+", score (REU): "+"{:.3e}".format(score)+"\n"+str(sequence).strip('X'))
+			f.write(">"+current_deg_pdb+", score (REU): "+"{:.3e}".format(score)+"\n"+"HHHHHHHHHH"+str(sequence).strip('X'))
 		symm_pose.dump_pdb(current_deg_pdb)
 		if self.centroids:
 			self.to_fullatom.apply(symm_pose)
