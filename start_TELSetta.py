@@ -118,7 +118,6 @@ class TELSetta:
 		#Grab a portion of 2QAR
 		TELSAM_in_9DOC = Pose()
 		temp_pose = pose_from_pdb(os.path.join(self.base,'ETEL.clean.pdb'))
-		mutate_residue(temp_pose,67,"V",5)
 		os.remove(os.path.join(self.base,"ETEL.clean.pdb"))
 		append_subpose_to_pose(TELSAM_in_9DOC,temp_pose,temp_pose.chain_begin(2),temp_pose.chain_end(2))
 		S_pose = pose_from_pdb(os.path.join(self.base,'STEL.clean.pdb'))
@@ -134,7 +133,8 @@ class TELSetta:
 			S_atom = AtomID(S_pose.residue(SR).atom_index("CA"), SR)
 			atom_map.set(E_atom,S_atom)
 		superimpose_pose(TELSAM_in_9DOC,S_pose,atom_map)
-
+		mutate_residue(TELSAM_in_9DOC,34,"R",5)
+		mutate_residue(TELSAM_in_9DOC,66,"E",5)
 		"""
 		####################################### EXTEND HELIX ###############################################
 		helix_extender = Pose()
@@ -157,6 +157,7 @@ class TELSetta:
 		append_pose_to_pose(TELSAM_in_9DOC,helix_extender,new_chain=False)
 		TELSAM_in_9DOC.conformation().declare_chemical_bond(TELSAM_in_9DOC.chain_end(1)-helix_extender.total_residue(),"C",TELSAM_in_9DOC.chain_end(1)-helix_extender.total_residue()+1,"N")
 		"""
+		TELSAM_in_9DOC.add_upper_terminus_type_to_pose_residue()
 
 		TELSAM_in_9DOC.dump_pdb(os.path.join(self.base,f'TELSAM_in_9DOC.pdb'))
 		last_size = -1
@@ -210,9 +211,9 @@ class TELSetta:
 						file.write(line)
 
 	def change_deg(self,current_ucab_pdb,deg):
-		symm_pose = pose_from_file(current_ucab_pdb)
+		deg_pose = pose_from_file(current_ucab_pdb)
 		if self.centroids:
-			self.to_centroid.apply(symm_pose)
+			self.to_centroid.apply(deg_pose)
 		theta = math.radians(deg)
 		R = xyzMatrix_double_t()
 		R.xx = math.cos(theta)
@@ -225,9 +226,8 @@ class TELSetta:
 		R.zy = 0.0
 		R.zz = 1.0
 		v = xyzVector_double_t(0.0, 0.0, 0.0) #No translation
-		symm_pose.apply_transform_Rx_plus_v(R, v)
-		self.makesym.apply(symm_pose)
-		return symm_pose
+		deg_pose.apply_transform_Rx_plus_v(R, v)
+		return deg_pose
 
 	def scilter(self,symm_pose,min_score,er_cutoff,min_score_pdb,current_pdb,last_pdb,scored_file_name):
 		"""self.scilter scores the symmetric pose, compares the score to the min_score*er_cutoff, and determines whether to update the min_score_pdb or not 
@@ -245,8 +245,8 @@ class TELSetta:
 					if str(os.path.join(self.base,f'{self.TELSAM_version}--{self.client_pdb}')) in specs[spec]:
 						if len(specs)==spec+4:
 							self.energies_vs_ucab_vs_deg['linker'].append(int(specs[spec+1]))
-							self.energies_vs_ucab_vs_deg["ucab"].append(float(specs[spec+2]))
-							self.energies_vs_ucab_vs_deg["deg"].append(float(specs[spec+3].removesuffix(".pdb")))
+							self.energies_vs_ucab_vs_deg["ucab"].append(int(specs[spec+2]))
+							self.energies_vs_ucab_vs_deg["deg"].append(int(specs[spec+3].removesuffix(".pdb")))
 							self.energies_vs_ucab_vs_deg['energy'].append(float(score))
 		if 0<score<=min_score*er_cutoff or score<0:
 			if score<min_score:
@@ -368,8 +368,7 @@ class TELSetta:
 			if self.linker_variant!=None:
 				self.start_residue_to_superimpose+=self.linker_variant
 			else:
-				self.linker_variant = -1+self.start_residue_to_superimpose
-			self.start_residue_to_superimpose = self.start_residue_to_superimpose+self.linker_variant
+				self.linker_variant = 1+self.start_residue_to_superimpose
 			TELSAM_residues_to_superimpose = range(self.TELSAM.chain_end(1)-self.start_residue_to_superimpose,self.TELSAM.chain_end(1)-self.start_residue_to_superimpose+3)
 			client_residues_to_superimpose = range(1,4)
 			atom_map = AtomID_Map()
