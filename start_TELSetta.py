@@ -157,7 +157,6 @@ class TELSetta:
 		append_pose_to_pose(TELSAM_in_9DOC,helix_extender,new_chain=False)
 		TELSAM_in_9DOC.conformation().declare_chemical_bond(TELSAM_in_9DOC.chain_end(1)-helix_extender.total_residue(),"C",TELSAM_in_9DOC.chain_end(1)-helix_extender.total_residue()+1,"N")
 		"""
-		TELSAM_in_9DOC.add_upper_terminus_type_to_pose_residue()
 
 		TELSAM_in_9DOC.dump_pdb(os.path.join(self.base,f'TELSAM_in_9DOC.pdb'))
 		last_size = -1
@@ -361,7 +360,7 @@ class TELSetta:
 			append_subpose_to_pose(self.client,temp_pose,temp_pose.chain_begin(1)+first_helix,temp_pose.chain_end(1))
 			
 			#Align the two helices:
-			self.start_residue_to_superimpose = 2
+			self.start_residue_to_superimpose = 3
 			if os.path.exists(os.path.join(self.base,f'scores_file.txt')):
 				os.remove(os.path.join(self.base,f'scores_file.txt'))
 			self.TELSAM = self.TELSAM_in_9DOC.clone()

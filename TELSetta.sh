@@ -15,7 +15,7 @@ do
         u) unit_cell_ab="${OPTARG}";;
         d) degree_rotation="${OPTARG}";;
         r) remake_TELSAM="${OPTARG}";;
-        o) optimize_TELSAM="true";;
+        o) optimize_TELSAM="false";;
         \?) echo "Invalid option: -$OPTARG" >&2; exit 1;;
     esac
 done
