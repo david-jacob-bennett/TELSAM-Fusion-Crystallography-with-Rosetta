@@ -87,4 +87,8 @@ else
         cmd=("${cmd_base[@]}" -l "$linker_variant")
     fi
     "${cmd[@]}"
+    fasta="$HOME/TELSetta/${linker_variant}/${TELSAM_version}--${client}_${linker_variant}_${min_ab}_${min_d}.fasta"
+    fastout="$HOME/TELSetta/${TELSAM_version}--${client}_${linker_variant}_${min_ab}_${min_d}_gene.fasta"
+    echo "fasta:$fasta fastout:$fastout"
+    GeneDesigner2.exe "$fasta" "$fastout" "None"
 fi

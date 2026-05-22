@@ -36,7 +36,7 @@ from pyrosetta.rosetta.numeric import xyzMatrix_double_t, xyzVector_double_t
 
 from matplotlib import pyplot as plt
 
-pyrosetta.init("-crystal_refine -cryst::refinable_lattice -score_symm_complex -out:level 300 -out:file:scorefile scores.sc")
+pyrosetta.init("-crystal_refine -cryst::refinable_lattice -score_symm_complex")
 
 class TELSetta:
 	def __init__(self):
@@ -47,7 +47,7 @@ class TELSetta:
 		self.degree_rotation = None
 		self.remake_TELSAM_bool = False
 		self.optimize = False
-		self.centroids = True
+		self.centroids = False
 		self.scores = {}
 		try:
 			optlist, args = getopt.getopt(sys.argv[1:], "t:c:l:u:d:r:o")
@@ -226,6 +226,7 @@ class TELSetta:
 		R.zz = 1.0
 		v = xyzVector_double_t(0.0, 0.0, 0.0) #No translation
 		deg_pose.apply_transform_Rx_plus_v(R, v)
+		self.makesym.apply(deg_pose)
 		return deg_pose
 
 	def scilter(self,symm_pose,min_score,er_cutoff,min_score_pdb,current_pdb,last_pdb,scored_file_name):
@@ -386,6 +387,41 @@ class TELSetta:
 			append_pose_to_pose(self.TELSAM,self.client,new_chain=False)
 			self.TELSAM.conformation().declare_chemical_bond(self.TELSAM.chain_end(1)-self.client.total_residue(),"C",self.TELSAM.chain_end(1)-self.client.total_residue()+1,"N")
 
+			#Refine
+			self.sf = get_score_function()
+			self.relax = FastRelax()
+			self.relax.set_scorefxn(self.sf)
+			self.tf = TaskFactory()
+			self.tf.push_back(InitializeFromCommandline())
+			self.tf.push_back(RestrictToRepacking())
+			self.packer = PackRotamersMover(self.sf)
+			self.packer.task_factory(self.tf)
+			self.min_mover = MinMover()
+			self.min_mover.score_function(self.sf)
+			self.min_mover.min_type("lbfgs_armijo_nonmonotone")
+			movemap = MoveMap()
+			movemap.set_bb(False)
+			movemap.set_chi(False)
+			for i in range(self.TELSAM.chain_end(1)-self.client.total_residue()-self.start_residue_to_superimpose,self.TELSAM.chain_end(1)):
+				movemap.set_bb(i, True)
+				movemap.set_chi(i, True)
+			#Refine gently
+			self.min_mover.movemap(movemap)
+			#self.packer.apply(self.TELSAM)
+			self.min_mover.apply(self.TELSAM)
+			self.relax.set_movemap(movemap)
+			self.relax.apply(self.TELSAM)
+
+			#Realign to 9DOC at the polymer extension interface
+			TELSAM_residues_to_superimpose = [2,30,31,32,34,53,57,62,65,69]
+			atom_map = AtomID_Map()
+			initialize_atomid_map(atom_map, self.TELSAM_in_9DOC, AtomID())
+			for R in (TELSAM_residues_to_superimpose):
+				E_atom = AtomID(self.TELSAM.residue(R).atom_index("CA"), R)
+				S_atom = AtomID(self.TELSAM_in_9DOC.residue(R).atom_index("CA"), R)
+				atom_map.set(E_atom,S_atom)
+			superimpose_pose(self.TELSAM_in_9DOC,self.TELSAM,atom_map)
+
 			#Save so you can extract the furthest_x coordinate and refine correctly
 			self.current_linker_pdb = os.path.join(self.base,f'{self.TELSAM_version}--{self.client_pdb}_{self.linker_variant}.pdb')
 			self.TELSAM.dump_pdb(self.current_linker_pdb)
@@ -400,10 +436,9 @@ class TELSetta:
 						x_coord = float(line[31:39].strip())
 						if x_coord>self.furthest_x:
 							self.furthest_x = x_coord
-			#Refine
-			self.refinement(self.TELSAM)
-			self.TELSAM.dump_pdb(self.current_linker_pdb)
 			
+			self.setup_for_refinement()
+
 			#Filter:
 			if self.centroids:
 				self.to_centroid.apply(self.TELSAM)
@@ -419,7 +454,7 @@ class TELSetta:
 			print(e,file=sys.stderr)
 			sys.exit()
 
-	def refinement(self,pose):
+	def setup_for_refinement(self):
 		#################### SETUP FOR REFINEMENT ##########################
 		self.interaction_shell_size = self.furthest_x*0.65
 		print(f'INTERACTION SHELL SIZE: {self.interaction_shell_size}')
@@ -448,7 +483,8 @@ class TELSetta:
 			self.min_mover = MinMover()
 			self.min_mover.score_function(self.sf)
 			self.min_mover.min_type("lbfgs_armijo_nonmonotone")
-
+	
+	def refine(self,pose):
 		####################### MOVEMAP REFINEMENT (Must be re-setup after pose is symmetrized) #################
 		#It may be okay to just have it here and then call the min_mover.movemap and relax.set_movemap functions later.
 		movemap = MoveMap()
@@ -501,6 +537,8 @@ class TELSetta:
 			if self.centroids:
 				self.to_centroid.apply(symm_pose)
 			self.makesym.apply(symm_pose)
+			self.refine(symm_pose)
+			self.pmm.apply(symm_pose)
 			min_score,min_score_pdb,exceeded = self.scilter(symm_pose,min_score,1.1,min_score_pdb,current_ucab_pdb,os.path.join(self.base,f'{self.TELSAM_version}--{self.client_pdb}_{self.linker_variant}_{ucab+1}.pdb'),'Unit Cell AB File')
 			if exceeded:
 				if min_score_pdb != None:
@@ -519,6 +557,7 @@ class TELSetta:
 					self.change_cell(min_ucab_pdb,current_ucab2_deg_pdb,wa=ucab2,wb=ucab2)
 					symm_pose = self.change_deg(current_ucab2_deg_pdb,deg)
 					self.makesym.apply(symm_pose)
+					self.refine(symm_pose)
 					min_score,min_score_pdb,exceeded = self.scilter(symm_pose,min_score,1.1,min_score_pdb,current_ucab2_deg_pdb,os.path.join(self.base,f'{min_ucab_pdb.removesuffix(f"{ucab1}.pdb")}_{ucab2+1}_{deg}.pdb'),'Temp Unit Cell AB2 Deg File')
 					if self.centroids:
 						self.to_fullatom.apply(symm_pose)
@@ -544,6 +583,7 @@ class TELSetta:
 					self.change_cell(min_ucab_pdb,current_ucab2_deg_pdb,wa=ucab2,wb=ucab2)
 					symm_pose = self.change_deg(current_ucab2_deg_pdb,deg)
 					self.makesym.apply(symm_pose)
+					self.refine(symm_pose)
 					min_score,min_score_pdb,exceeded = self.scilter(symm_pose,min_score,1.1,min_score_pdb,current_ucab2_deg_pdb,os.path.join(self.base,f'{min_ucab_pdb.removesuffix(f"{ucab1}.pdb")}_{ucab2+1}_{deg}.pdb'),'Temp Unit Cell AB2 Deg File')
 					if self.centroids:
 						self.to_fullatom.apply(symm_pose)
@@ -579,6 +619,7 @@ class TELSetta:
 		if self.centroids:
 			self.to_centroid.apply(symm_pose)
 		self.makesym.apply(symm_pose)
+		self.refine(symm_pose)
 		score = self.sf(symm_pose)
 		print(f'Score of {current_deg_pdb}: {score}')
 		with open (f'{current_deg_pdb.removesuffix('.pdb')}.fasta', 'w') as f:
@@ -587,6 +628,7 @@ class TELSetta:
 		if self.centroids:
 			self.to_fullatom.apply(symm_pose)
 		self.pmm.apply(symm_pose)
+		self.chart(self.linker_variant)
 
 def main():
 	TELSetta1 = TELSetta()
