@@ -1,3 +1,7 @@
+#The default command to run this program on a given client is:
+#bash TELSetta.sh -c "7TCY" -r true -l "1"
+#This remakes the 1TEL subunit, fuses it to your client once, and tests the different alignments of the polymers to see which is best.
+
 TELSAM_version="1TEL"
 pymol_setting="true"
 linker_variant=""
