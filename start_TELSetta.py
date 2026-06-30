@@ -56,6 +56,13 @@ class TELSetta:
 		self.centroids = True
 		self.scores = {}
 		self.TELSAM_url = "https://files.rcsb.org/download/9DOC.pdb"
+		self.headers = {
+			"User-Agent": (
+			"Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+			"AppleWebKit/537.36 (KHTML, like Gecko) "
+			"Chrome/125.0 Safari/537.36"
+			)
+		}
 		try:
 			optlist, args = getopt.getopt(sys.argv[1:], "t:c:l:u:d:r:z:o")
 			for o, a in optlist:
@@ -110,7 +117,7 @@ class TELSetta:
 		#Get 2QAR from the pdb (it's our most convenient engineered TELSAM because of the long helical linker at the end.)
 		
 		url = f"https://files.rcsb.org/download/2QAR.pdb"
-		pdb_text = requests.get(url).text
+		pdb_text = requests.get(url,headers=self.headers).text
 		ETEL_path = os.path.join(self.base,"ETEL.pdb")
 		with open(ETEL_path,"w") as file:
 			file.write(pdb_text)
@@ -119,8 +126,7 @@ class TELSetta:
 
 		#Get 9DOC from the pdb (it has the proper space group that TELSAM usually fits into)
 		# 9DOC now passed in through an argument so that different TELSAM versions can be used.
-		pdb_text = requests.get(TELSAM_Type).text
-		print(f" THIS IS THE PDB TEXT: {pdb_text}")
+		pdb_text = requests.get(TELSAM_Type,headers=self.headers).text
 		STEL_path = os.path.join(self.base,"STEL.pdb")
 		with open(STEL_path,"w") as file:
 			file.write(pdb_text)
@@ -354,13 +360,11 @@ class TELSetta:
 		########################## CREATE TELSAM FUSION! ######################################
 		try:
 			self.client = Pose()
-			print(self.client)
 			if ".pdb" not in self.client_pdb:
 				url = f"https://files.rcsb.org/download/{self.client_pdb}.pdb"
-				pdb_text = requests.get(url).text
+				pdb_text = requests.get(url,headers=self.headers).text
 				with open(os.path.join(self.base,f"{self.client_pdb}.pdb"),"w") as file:
 					file.write(pdb_text)
-
 			client_path = os.path.join(self.base,f"{self.client_pdb}.pdb")
 			clean_client_path = os.path.join(self.base,f"{self.client_pdb}.clean.pdb")
 			cleanATOM(client_path)
