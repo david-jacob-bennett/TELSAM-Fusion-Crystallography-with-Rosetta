@@ -738,7 +738,7 @@ class TELSetta:
 				ucab_end = int(self.unit_cell_ab-30)
 			else:
 				ucab_start = int(self.furthest_x*2)
-				ucab_end = int(self.furthest_x-30)
+				ucab_end = int(self.furthest_x*2-30)
 			if self.degree_rotation!=None:
 				deg_start = self.degree_rotation
 				deg_end = self.degree_rotation+20
@@ -747,7 +747,7 @@ class TELSetta:
 				deg_end = 21
 		else:
 			ucab_start = int(self.furthest_x*2)
-			ucab_end = int(self.furthest_x-30)
+			ucab_end = int(self.furthest_x*2-30)
 			deg_start = 1
 			deg_end = 21
 
@@ -767,6 +767,7 @@ class TELSetta:
 		if min_ucab_pdb!=None:
 			print(f'min_ucab_pdb: {min_ucab_pdb}')
 			ucab = ucab1
+			self.interfaced = False
 			self.min_score = 200000
 			self.min_score_pdb = None
 			for deg in range(deg_start-1,deg_end):
@@ -786,6 +787,7 @@ class TELSetta:
 				#in energy)
 
 			ucab = ucab1
+			self.interfaced = False
 			self.min_score = 200000
 			self.min_score_pdb = None
 			for deg in range(-deg_start,-deg_end,-1):
